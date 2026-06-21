@@ -3,7 +3,7 @@ import User, { IUser } from '../user/user.model'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../../config/jwt'
 import { FACEBOOK_APP_ID, FACEBOOK_APP_SECRET, FACEBOOK_GRAPH_VERSION } from '../../config/facebook'
 import { env } from '../../config/env'
-import { logger } from '../../shared/utils/logger'
+import { sendEmail, passwordResetEmail } from '../../shared/utils/email'
 import { ConflictError, UnauthorizedError, BadRequestError } from '../../shared/utils/errors'
 
 interface FacebookProfile {
@@ -93,10 +93,10 @@ class AuthService {
     await user.save()
 
     const resetLink = `${env.FRONTEND_URL}/reset-password?token=${rawToken}`
-    // TODO: send via email queue once SMTP/BullMQ infra is wired up.
-    logger.info(`Password reset link for ${user.email}: ${resetLink}`)
+    const mail = passwordResetEmail(resetLink)
+    await sendEmail({ to: user.email, ...mail })
 
-    // Expose token in non-production so the flow is testable without email.
+    // Expose token in non-production so the flow is testable without a mail server.
     return env.NODE_ENV === 'production' ? { sent: true } : { sent: true, resetToken: rawToken }
   }
 

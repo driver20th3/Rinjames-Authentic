@@ -24,6 +24,13 @@ const envSchema = z.object({
   FACEBOOK_APP_ID: z.string().default(''),
   FACEBOOK_APP_SECRET: z.string().default(''),
 
+  // Email / SMTP (optional — falls back to logging the reset link)
+  SMTP_HOST: z.string().default(''),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().default(''),
+  SMTP_PASS: z.string().default(''),
+  EMAIL_FROM: z.string().default('RinJames Authentic <no-reply@rinjames.com>'),
+
   // Frontend / CORS
   FRONTEND_URL: z.string().default('http://localhost:3000'),
 
