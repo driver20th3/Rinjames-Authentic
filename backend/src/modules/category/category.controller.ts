@@ -20,6 +20,15 @@ export const getCategoryBySlug = async (req: Request, res: Response, next: NextF
   }
 }
 
+export const getCategoryById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const category = await categoryService.getById(req.params.id)
+    sendSuccess(res, category, 'Category retrieved')
+  } catch (e) {
+    next(e)
+  }
+}
+
 export const createCategory = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const category = await categoryService.create(req.body)

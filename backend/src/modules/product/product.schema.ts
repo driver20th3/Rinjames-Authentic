@@ -44,5 +44,12 @@ export const listProductQuerySchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(12)
 })
 
+export const adminListProductQuerySchema = listProductQuerySchema.extend({
+  isActive: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional()
+})
+
 export const idParamSchema = z.object({ id: objectId })
 export const slugParamSchema = z.object({ slug: z.string().min(1) })

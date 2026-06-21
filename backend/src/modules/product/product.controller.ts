@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import productService, { ProductFilters } from './product.service'
+import productService, { AdminProductFilters, ProductFilters } from './product.service'
 import { sendSuccess } from '../../shared/utils/response'
 import { uploadToCloudinary } from '../../shared/middleware/upload.middleware'
 import { BadRequestError } from '../../shared/utils/errors'
@@ -17,6 +17,44 @@ export const listProducts = async (req: Request, res: Response, next: NextFuncti
 export const getProductBySlug = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const product = await productService.getBySlug(req.params.slug)
+    sendSuccess(res, product, 'Product retrieved')
+  } catch (e) {
+    next(e)
+  }
+}
+
+export const getBrands = async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const brands = await productService.getBrands()
+    sendSuccess(res, brands, 'Brands retrieved')
+  } catch (e) {
+    next(e)
+  }
+}
+
+export const getRelatedProducts = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const products = await productService.getRelated(req.params.slug)
+    sendSuccess(res, products, 'Related products retrieved')
+  } catch (e) {
+    next(e)
+  }
+}
+
+// ---- Admin ----
+export const listProductsAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const filters = req.query as unknown as AdminProductFilters
+    const { products, pagination } = await productService.listAdmin(filters)
+    sendSuccess(res, products, 'Products retrieved', 200, pagination)
+  } catch (e) {
+    next(e)
+  }
+}
+
+export const getProductByIdAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const product = await productService.getById(req.params.id)
     sendSuccess(res, product, 'Product retrieved')
   } catch (e) {
     next(e)

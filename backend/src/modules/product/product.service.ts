@@ -27,6 +27,10 @@ export interface ProductFilters {
   limit: number
 }
 
+export interface AdminProductFilters extends ProductFilters {
+  isActive?: boolean // admin can filter; public always sees only active
+}
+
 class ProductService {
   /** Accept a category slug or ObjectId; return its id, or null if unknown. */
   private async resolveCategoryId(category: string): Promise<Types.ObjectId | null> {
@@ -43,15 +47,21 @@ class ProductService {
     return exists ? `${base}-${Date.now().toString().slice(-5)}` : base
   }
 
-  async list(filters: ProductFilters) {
-    const { category, brand, size, color, minPrice, maxPrice, search, featured, sort, page, limit } =
-      filters
-    const skip = (page - 1) * limit
-    const query: any = { isActive: true }
+  /** Build the Mongo filter shared by public + admin listing. Returns null if the
+   *  category filter references an unknown category (caller should return empty). */
+  private async buildQuery(
+    filters: AdminProductFilters,
+    scope: 'public' | 'admin'
+  ): Promise<Record<string, any> | null> {
+    const { category, brand, size, color, minPrice, maxPrice, search, featured, isActive } = filters
+    const query: any = {}
+
+    if (scope === 'public') query.isActive = true
+    else if (isActive !== undefined) query.isActive = isActive
 
     if (category) {
       const id = await this.resolveCategoryId(category)
-      if (!id) return { products: [], pagination: buildPagination(page, limit, 0) }
+      if (!id) return null
       query.category = id
     }
     if (brand) query.brand = brand
@@ -64,20 +74,51 @@ class ProductService {
       if (maxPrice !== undefined) query.price.$lte = maxPrice
     }
     if (search) query.$text = { $search: search }
+    return query
+  }
 
+  private async runListing(query: Record<string, any>, sort: string | undefined, page: number, limit: number) {
+    const skip = (page - 1) * limit
     const sortBy = (sort && SORT_OPTIONS[sort]) || SORT_OPTIONS.newest
-
     const [products, total] = await Promise.all([
-      Product.find(query)
-        .populate('category', 'name slug')
-        .sort(sortBy)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+      Product.find(query).populate('category', 'name slug').sort(sortBy).skip(skip).limit(limit).lean(),
       Product.countDocuments(query)
     ])
-
     return { products, pagination: buildPagination(page, limit, total) }
+  }
+
+  async list(filters: ProductFilters) {
+    const query = await this.buildQuery(filters, 'public')
+    if (!query) return { products: [], pagination: buildPagination(filters.page, filters.limit, 0) }
+    return this.runListing(query, filters.sort, filters.page, filters.limit)
+  }
+
+  /** Admin listing — includes inactive products; supports filtering by isActive. */
+  async listAdmin(filters: AdminProductFilters) {
+    const query = await this.buildQuery(filters, 'admin')
+    if (!query) return { products: [], pagination: buildPagination(filters.page, filters.limit, 0) }
+    return this.runListing(query, filters.sort, filters.page, filters.limit)
+  }
+
+  /** Distinct brand names among active products (for filter UIs). */
+  async getBrands(): Promise<string[]> {
+    const brands: (string | null)[] = await Product.distinct('brand', { isActive: true })
+    return brands.filter((b): b is string => !!b).sort((a, b) => a.localeCompare(b))
+  }
+
+  /** Other active products in the same category (excludes the given product). */
+  async getRelated(slug: string, limit = 4) {
+    const product = await Product.findOne({ slug }).select('_id category').lean()
+    if (!product) throw new NotFoundError('Product not found')
+    return Product.find({
+      _id: { $ne: product._id },
+      category: product.category,
+      isActive: true
+    })
+      .populate('category', 'name slug')
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean()
   }
 
   async getBySlug(slug: string) {

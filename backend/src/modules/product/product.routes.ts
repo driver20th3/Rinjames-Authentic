@@ -7,6 +7,7 @@ import {
   createProductSchema,
   updateProductSchema,
   listProductQuerySchema,
+  adminListProductQuerySchema,
   idParamSchema,
   slugParamSchema
 } from './product.schema'
@@ -15,13 +16,25 @@ import {
 export const productRoutes = Router()
 
 productRoutes.get('/', validate({ query: listProductQuerySchema }), productController.listProducts)
+productRoutes.get('/brands', productController.getBrands)
 productRoutes.get('/:slug', validate({ params: slugParamSchema }), productController.getProductBySlug)
+productRoutes.get(
+  '/:slug/related',
+  validate({ params: slugParamSchema }),
+  productController.getRelatedProducts
+)
 
 // ---- Admin: /api/admin/products ----
 export const adminProductRoutes = Router()
 
 adminProductRoutes.use(requireAuth, requireAdmin)
 
+adminProductRoutes.get(
+  '/',
+  validate({ query: adminListProductQuerySchema }),
+  productController.listProductsAdmin
+)
+adminProductRoutes.get('/:id', validate({ params: idParamSchema }), productController.getProductByIdAdmin)
 adminProductRoutes.post('/', validate({ body: createProductSchema }), productController.createProduct)
 adminProductRoutes.put(
   '/:id',

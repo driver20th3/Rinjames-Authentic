@@ -20,6 +20,8 @@ export const adminCategoryRoutes = Router()
 
 adminCategoryRoutes.use(requireAuth, requireAdmin)
 
+adminCategoryRoutes.get('/', categoryController.listCategories)
+adminCategoryRoutes.get('/:id', validate({ params: idParamSchema }), categoryController.getCategoryById)
 adminCategoryRoutes.post('/', validate({ body: createCategorySchema }), categoryController.createCategory)
 adminCategoryRoutes.put(
   '/:id',
