@@ -179,6 +179,20 @@ async function run() {
   r = await req('GET', `/api/products/${prodSlug}`)
   check('GET /api/products/:slug -> 200', r.status === 200 && r.json?.data?.name === pname)
 
+  // --- Brands metadata ---
+  r = await req('GET', '/api/products/brands')
+  check('GET /api/products/brands -> array', r.status === 200 && Array.isArray(r.json?.data))
+
+  // --- Related products ---
+  r = await req('GET', `/api/products/${prodSlug}/related`)
+  check('GET /api/products/:slug/related -> array', r.status === 200 && Array.isArray(r.json?.data))
+
+  // --- Admin list (sees products incl. inactive) ---
+  r = await req('GET', '/api/admin/products?limit=50', { token: adminToken })
+  check('GET /api/admin/products -> 200 + pagination', r.status === 200 && !!r.json?.pagination)
+  r = await req('GET', `/api/admin/products/${prodId}`, { token: adminToken })
+  check('GET /api/admin/products/:id -> 200', r.status === 200 && r.json?.data?._id === prodId)
+
   // --- Admin update product ---
   r = await req('PUT', `/api/admin/products/${prodId}`, {
     token: adminToken,
