@@ -1,0 +1,34 @@
+# Development stack with hot reload.
+#   docker compose up                      -> app only (uses MONGODB_URI from .env, e.g. Atlas)
+#   docker compose --profile local-db up   -> also starts a local mongo:7 container
+services:
+  app:
+    build:
+      context: .
+      target: builder # has dev deps + source for ts-node/nodemon
+    command: npm run dev
+    ports:
+      - '5000:5000'
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./:/app # live-mount source for hot reload
+      - /app/node_modules # keep container's node_modules
+    depends_on: []
+    restart: unless-stopped
+
+  # Optional local MongoDB (only with: --profile local-db).
+  # To use it, set MONGODB_URI=mongodb://mongo:27017/shop in .env
+  mongo:
+    image: mongo:7
+    profiles: ['local-db']
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongo_data:

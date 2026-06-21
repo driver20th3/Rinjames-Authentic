@@ -1,0 +1,32 @@
+# Production stack. Uses MongoDB Atlas (no mongo container here).
+# Pulls the image built & pushed by CI. Set DOCKER_IMAGE + provide .env.production.
+#   DOCKER_IMAGE=youruser/rinjames-backend:latest docker compose -f docker-compose.prod.yml up -d
+services:
+  app:
+    image: ${DOCKER_IMAGE:-rinjames-backend:latest}
+    env_file:
+      - .env.production
+    environment:
+      - NODE_ENV=production
+    ports:
+      - '5000:5000'
+    restart: always
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - rinjames
+
+  # Redis is NOT included yet — the email queue (BullMQ) is not implemented.
+  # When you add it, uncomment:
+  # redis:
+  #   image: redis:7-alpine
+  #   restart: always
+  #   networks: [rinjames]
+
+networks:
+  rinjames:
+    driver: bridge
